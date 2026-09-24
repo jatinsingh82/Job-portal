@@ -14,49 +14,66 @@ import JobDetails from "./components/Job/JobDetails";
 import Application from "./components/Application/Application";
 import MyApplications from "./components/Application/MyApplications";
 import PostJob from "./components/Job/PostJob";
-import NotFound from "./components/NotFound/NotFound";
 import MyJobs from "./components/Job/MyJobs";
+import SavedJobs from "./components/Job/SavedJobs";
+import Profile from "./components/Candidate/Profile";
+import NotFound from "./components/NotFound/NotFound";
 
 const App = () => {
   const { isAuthorized, setIsAuthorized, setUser } = useContext(Context);
+
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await axios.get(
-          "http://localhost:4000/api/v1/user/getuser",
-          {
-            withCredentials: true,
-          }
-        );
-        setUser(response.data.user);
-        setIsAuthorized(true);
+        const response = await axios.get("/api/v1/user/getuser", {
+          withCredentials: true,
+        });
+        if (response.data && response.data.user) {
+          setUser(response.data.user);
+          setIsAuthorized(true);
+        }
       } catch (error) {
         setIsAuthorized(false);
       }
     };
     fetchUser();
-  }, [isAuthorized]);
+  }, [isAuthorized, setIsAuthorized, setUser]);
 
   return (
-    <>
-      <BrowserRouter>
+    <BrowserRouter>
+      <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800 antialiased selection:bg-blue-600 selection:text-white">
         <Navbar />
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/" element={<Home />} />
-          <Route path="/job/getall" element={<Jobs />} />
-          <Route path="/job/:id" element={<JobDetails />} />
-          <Route path="/application/:id" element={<Application />} />
-          <Route path="/applications/me" element={<MyApplications />} />
-          <Route path="/job/post" element={<PostJob />} />
-          <Route path="/job/me" element={<MyJobs />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <main className="flex-1">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/job/getall" element={<Jobs />} />
+            <Route path="/job/:id" element={<JobDetails />} />
+            <Route path="/application/:id" element={<Application />} />
+            <Route path="/applications/me" element={<MyApplications />} />
+            <Route path="/saved-jobs" element={<SavedJobs />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/job/post" element={<PostJob />} />
+            <Route path="/job/me" element={<MyJobs />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </main>
         <Footer />
-        <Toaster />
-      </BrowserRouter>
-    </>
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 3500,
+            style: {
+              background: "#1e293b",
+              color: "#fff",
+              borderRadius: "0.75rem",
+              fontSize: "0.875rem",
+            },
+          }}
+        />
+      </div>
+    </BrowserRouter>
   );
 };
 

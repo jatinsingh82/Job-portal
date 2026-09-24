@@ -1,12 +1,25 @@
 import mongoose from "mongoose";
 import validator from "validator";
+import { mockApplication } from "../database/mockStore.js";
 
 const applicationSchema = new mongoose.Schema({
+  jobId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Job",
+  },
+  jobTitle: {
+    type: String,
+    default: "",
+  },
+  company: {
+    type: String,
+    default: "",
+  },
   name: {
     type: String,
     required: [true, "Please enter your Name!"],
-    minLength: [3, "Name must contain at least 3 Characters!"],
-    maxLength: [30, "Name cannot exceed 30 Characters!"],
+    minLength: [2, "Name must contain at least 2 Characters!"],
+    maxLength: [50, "Name cannot exceed 50 Characters!"],
   },
   email: {
     type: String,
@@ -15,10 +28,10 @@ const applicationSchema = new mongoose.Schema({
   },
   coverLetter: {
     type: String,
-    required: [true, "Please provide a cover letter!"],
+    default: "",
   },
   phone: {
-    type: Number,
+    type: String,
     required: [true, "Please enter your Phone Number!"],
   },
   address: {
@@ -27,12 +40,20 @@ const applicationSchema = new mongoose.Schema({
   },
   resume: {
     public_id: {
-      type: String, 
+      type: String,
       required: true,
     },
     url: {
-      type: String, 
+      type: String,
       required: true,
+    },
+    name: {
+      type: String,
+      default: "Resume.pdf",
+    },
+    size: {
+      type: String,
+      default: "PDF",
     },
   },
   applicantID: {
@@ -59,6 +80,55 @@ const applicationSchema = new mongoose.Schema({
       required: true,
     },
   },
+  status: {
+    type: String,
+    enum: [
+      "Applied",
+      "Screening",
+      "Under Review",
+      "Shortlisted",
+      "Interview",
+      "Selected",
+      "Rejected",
+      "Hired",
+    ],
+    default: "Applied",
+  },
+  interview: {
+    scheduled: { type: Boolean, default: false },
+    date: { type: String, default: "" },
+    time: { type: String, default: "" },
+    type: { type: String, default: "Video Call" },
+    link: { type: String, default: "" },
+    notes: { type: String, default: "" },
+  },
+  timeline: [
+    {
+      status: String,
+      date: { type: Date, default: Date.now },
+      note: String,
+    },
+  ],
+  appliedAt: {
+    type: Date,
+    default: Date.now,
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
-export const Application = mongoose.model("Application", applicationSchema);
+const MongooseApplication = mongoose.model("Application", applicationSchema);
+
+export const Application = new Proxy(MongooseApplication, {
+  get(target, prop, receiver) {
+    if (mongoose.connection.readyState === 1) {
+      return Reflect.get(target, prop, receiver);
+    }
+    if (prop in mockApplication) {
+      return mockApplication[prop];
+    }
+    return Reflect.get(target, prop, receiver);
+  },
+});

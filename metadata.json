@@ -1,0 +1,6 @@
+{
+  "name": "CareerConnect Job Portal",
+  "description": "Find top talent and explore employment opportunities with seamless job posting, search, and applications.",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,17 +1,22 @@
 import mongoose from "mongoose";
+import { mockJob } from "../database/mockStore.js";
 
 const jobSchema = new mongoose.Schema({
   title: {
     type: String,
-    required: [true, "Please provide a title."],
-    minLength: [3, "Title must contain at least 3 Characters!"],
-    maxLength: [30, "Title cannot exceed 30 Characters!"],
+    required: [true, "Please provide a job title."],
+    minLength: [3, "Title must contain at least 3 characters!"],
+    maxLength: [100, "Title cannot exceed 100 characters!"],
+  },
+  company: {
+    type: String,
+    default: "Technology Solutions Inc.",
   },
   description: {
     type: String,
-    required: [true, "Please provide decription."],
-    minLength: [30, "Description must contain at least 30 Characters!"],
-    maxLength: [500, "Description cannot exceed 500 Characters!"],
+    required: [true, "Please provide a description."],
+    minLength: [20, "Description must contain at least 20 characters!"],
+    maxLength: [5000, "Description cannot exceed 5000 characters!"],
   },
   category: {
     type: String,
@@ -28,22 +33,55 @@ const jobSchema = new mongoose.Schema({
   location: {
     type: String,
     required: [true, "Please provide location."],
-    minLength: [20, "Location must contian at least 20 characters!"],
+    minLength: [3, "Location must contain at least 3 characters!"],
+  },
+  employmentType: {
+    type: String,
+    enum: ["Full-time", "Part-time", "Contract", "Internship"],
+    default: "Full-time",
+  },
+  workMode: {
+    type: String,
+    enum: ["Remote", "Hybrid", "On-site"],
+    default: "Hybrid",
+  },
+  experienceLevel: {
+    type: String,
+    enum: ["Entry Level", "Mid Level", "Senior Level", "Lead / Director"],
+    default: "Mid Level",
+  },
+  skills: {
+    type: [String],
+    default: [],
+  },
+  responsibilities: {
+    type: String,
+    default: "",
+  },
+  requirements: {
+    type: String,
+    default: "",
+  },
+  benefits: {
+    type: [String],
+    default: [],
+  },
+  deadline: {
+    type: Date,
   },
   fixedSalary: {
     type: Number,
-    minLength: [4, "Salary must contain at least 4 digits"],
-    maxLength: [9, "Salary cannot exceed 9 digits"],
   },
   salaryFrom: {
     type: Number,
-    minLength: [4, "Salary must contain at least 4 digits"],
-    maxLength: [9, "Salary cannot exceed 9 digits"],
   },
   salaryTo: {
     type: Number,
-    minLength: [4, "Salary must contain at least 4 digits"],
-    maxLength: [9, "Salary cannot exceed 9 digits"],
+  },
+  status: {
+    type: String,
+    enum: ["active", "draft", "closed"],
+    default: "active",
   },
   expired: {
     type: Boolean,
@@ -60,4 +98,16 @@ const jobSchema = new mongoose.Schema({
   },
 });
 
-export const Job = mongoose.model("Job", jobSchema);
+const MongooseJob = mongoose.model("Job", jobSchema);
+
+export const Job = new Proxy(MongooseJob, {
+  get(target, prop, receiver) {
+    if (mongoose.connection.readyState === 1) {
+      return Reflect.get(target, prop, receiver);
+    }
+    if (prop in mockJob) {
+      return mockJob[prop];
+    }
+    return Reflect.get(target, prop, receiver);
+  },
+});

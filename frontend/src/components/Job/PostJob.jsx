@@ -1,187 +1,479 @@
 import React, { useContext, useEffect, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Context } from "../../main";
+import {
+  Briefcase,
+  Building,
+  MapPin,
+  DollarSign,
+  PlusCircle,
+  ArrowLeft,
+  Calendar,
+  Layers,
+  Sparkles,
+  CheckCircle2,
+} from "lucide-react";
+
 const PostJob = () => {
+  const { isAuthorized, user } = useContext(Context);
+  const navigate = useNavigate();
+
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
-  const [country, setCountry] = useState("");
+  const [company, setCompany] = useState("");
+  const [category, setCategory] = useState("Web Development");
+  const [employmentType, setEmploymentType] = useState("Full-time");
+  const [workMode, setWorkMode] = useState("Hybrid");
+  const [experienceLevel, setExperienceLevel] = useState("Mid Level");
+  const [country, setCountry] = useState("United States");
   const [city, setCity] = useState("");
   const [location, setLocation] = useState("");
+  const [skills, setSkills] = useState("");
+  const [description, setDescription] = useState("");
+  const [responsibilities, setResponsibilities] = useState("");
+  const [requirements, setRequirements] = useState("");
+  const [benefits, setBenefits] = useState("");
+  const [deadline, setDeadline] = useState("");
+
+  const [salaryType, setSalaryType] = useState("ranged"); // 'fixed' | 'ranged'
+  const [fixedSalary, setFixedSalary] = useState("");
   const [salaryFrom, setSalaryFrom] = useState("");
   const [salaryTo, setSalaryTo] = useState("");
-  const [fixedSalary, setFixedSalary] = useState("");
-  const [salaryType, setSalaryType] = useState("default");
 
-  const { isAuthorized, user } = useContext(Context);
+  const [loading, setLoading] = useState(false);
 
-  const handleJobPost = async (e) => {
-    e.preventDefault();
-    if (salaryType === "Fixed Salary") {
-      setSalaryFrom("");
-      setSalaryFrom("");
-    } else if (salaryType === "Ranged Salary") {
-      setFixedSalary("");
-    } else {
-      setSalaryFrom("");
-      setSalaryTo("");
-      setFixedSalary("");
+  useEffect(() => {
+    if (!isAuthorized) {
+      navigate("/login");
+      return;
     }
-    await axios
-      .post(
-        "http://localhost:4000/api/v1/job/post",
-        fixedSalary.length >= 4
-          ? {
-              title,
-              description,
-              category,
-              country,
-              city,
-              location,
-              fixedSalary,
-            }
-          : {
-              title,
-              description,
-              category,
-              country,
-              city,
-              location,
-              salaryFrom,
-              salaryTo,
-            },
-        {
-          withCredentials: true,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      )
-      .then((res) => {
-        toast.success(res.data.message);
-      })
-      .catch((err) => {
-        toast.error(err.response.data.message);
+    if (user && user.role !== "Employer") {
+      toast.error("Only Employers can post jobs");
+      navigate("/job/getall");
+      return;
+    }
+    if (user?.company) {
+      setCompany(user.company);
+    }
+  }, [isAuthorized, user, navigate]);
+
+  const handlePostJob = async (e) => {
+    e.preventDefault();
+
+    if (!title || !description || !category || !country || !city || !location) {
+      toast.error("Please fill in all required job fields.");
+      return;
+    }
+
+    if (salaryType === "fixed" && !fixedSalary) {
+      toast.error("Please specify fixed salary amount");
+      return;
+    }
+
+    if (salaryType === "ranged" && (!salaryFrom || !salaryTo)) {
+      toast.error("Please specify both minimum and maximum salary range");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = {
+        title,
+        company: company || user?.company || "Hiring Company",
+        category,
+        employmentType,
+        workMode,
+        experienceLevel,
+        country,
+        city,
+        location,
+        skills,
+        description,
+        responsibilities,
+        requirements,
+        benefits,
+        deadline: deadline || undefined,
+      };
+
+      if (salaryType === "fixed") {
+        payload.fixedSalary = Number(fixedSalary);
+      } else {
+        payload.salaryFrom = Number(salaryFrom);
+        payload.salaryTo = Number(salaryTo);
+      }
+
+      const { data } = await axios.post("/api/v1/job/post", payload, {
+        withCredentials: true,
+        headers: { "Content-Type": "application/json" },
       });
+
+      toast.success(data.message || "Job posted successfully!");
+      navigate("/job/me");
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || "Failed to post job. Please review fields."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const navigateTo = useNavigate();
-  if (!isAuthorized || (user && user.role !== "Employer")) {
-    navigateTo("/");
-  }
+  const categories = [
+    "Web Development",
+    "Mobile App Development",
+    "Graphics & Design",
+    "DevOps",
+    "Artificial Intelligence",
+    "Data Science & Analytics",
+    "Product Management",
+    "Cybersecurity",
+    "Sales & Marketing",
+    "Finance & Accounting",
+  ];
 
   return (
-    <>
-      <div className="job_post page">
-        <div className="container">
-          <h3>POST NEW JOB</h3>
-          <form onSubmit={handleJobPost}>
-            <div className="wrapper">
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Job Title"
-              />
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              >
-                <option value="">Select Category</option>
-                <option value="Graphics & Design">Graphics & Design</option>
-                <option value="Mobile App Development">
-                  Mobile App Development
-                </option>
-                <option value="Frontend Web Development">
-                  Frontend Web Development
-                </option>
-                <option value="MERN Stack Development">
-                  MERN STACK Development
-                </option>
-                <option value="Account & Finance">Account & Finance</option>
-                <option value="Artificial Intelligence">
-                  Artificial Intelligence
-                </option>
-                <option value="Video Animation">Video Animation</option>
-                <option value="MEAN Stack Development">
-                  MEAN STACK Development
-                </option>
-                <option value="MEVN Stack Development">
-                  MEVN STACK Development
-                </option>
-                <option value="Data Entry Operator">Data Entry Operator</option>
-              </select>
-            </div>
-            <div className="wrapper">
-              <input
-                type="text"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                placeholder="Country"
-              />
-              <input
-                type="text"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="City"
-              />
-            </div>
-            <input
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Location"
-            />
-            <div className="salary_wrapper">
-              <select
-                value={salaryType}
-                onChange={(e) => setSalaryType(e.target.value)}
-              >
-                <option value="default">Select Salary Type</option>
-                <option value="Fixed Salary">Fixed Salary</option>
-                <option value="Ranged Salary">Ranged Salary</option>
-              </select>
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <Link
+        to="/job/me"
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Recruiter Dashboard
+      </Link>
+
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">
+            <Sparkles className="w-4 h-4" />
+            Recruiter Job Creator
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+            Publish a New Job Listing
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Provide transparent, accurate requirements to match with vetted software engineers, designers, and tech professionals.
+          </p>
+        </div>
+
+        <form onSubmit={handlePostJob} className="space-y-6 text-xs">
+          {/* Section 1: Basic Information */}
+          <div className="p-5 bg-slate-50/70 rounded-2xl border border-slate-200/80 space-y-4">
+            <h3 className="font-bold text-slate-900 text-sm">
+              Role & Company Identity
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                {salaryType === "default" ? (
-                  <p>Please provide Salary Type *</p>
-                ) : salaryType === "Fixed Salary" ? (
-                  <input
-                    type="number"
-                    placeholder="Enter Fixed Salary"
-                    value={fixedSalary}
-                    onChange={(e) => setFixedSalary(e.target.value)}
-                  />
-                ) : (
-                  <div className="ranged_salary">
-                    <input
-                      type="number"
-                      placeholder="Salary From"
-                      value={salaryFrom}
-                      onChange={(e) => setSalaryFrom(e.target.value)}
-                    />
-                    <input
-                      type="number"
-                      placeholder="Salary To"
-                      value={salaryTo}
-                      onChange={(e) => setSalaryTo(e.target.value)}
-                    />
-                  </div>
-                )}
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Job Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Senior Frontend Engineer"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Hiring Company *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Apex Technologies"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
+                />
               </div>
             </div>
-            <textarea
-              rows="10"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Job Description"
-            />
-            <button type="submit">Create Job</button>
-          </form>
-        </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Category *
+                </label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
+                >
+                  {categories.map((c, i) => (
+                    <option key={i} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Employment Type
+                </label>
+                <select
+                  value={employmentType}
+                  onChange={(e) => setEmploymentType(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
+                >
+                  <option value="Full-time">Full-time</option>
+                  <option value="Part-time">Part-time</option>
+                  <option value="Contract">Contract</option>
+                  <option value="Internship">Internship</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Work Mode
+                </label>
+                <select
+                  value={workMode}
+                  onChange={(e) => setWorkMode(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
+                >
+                  <option value="Remote">Remote</option>
+                  <option value="Hybrid">Hybrid</option>
+                  <option value="On-site">On-site</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Experience Level
+                </label>
+                <select
+                  value={experienceLevel}
+                  onChange={(e) => setExperienceLevel(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
+                >
+                  <option value="Entry Level">Entry Level</option>
+                  <option value="Mid Level">Mid Level</option>
+                  <option value="Senior Level">Senior Level</option>
+                  <option value="Lead / Director">Lead / Director</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Location & Compensation */}
+          <div className="p-5 bg-slate-50/70 rounded-2xl border border-slate-200/80 space-y-4">
+            <h3 className="font-bold text-slate-900 text-sm">
+              Location & Compensation
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Country *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. United States"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  City *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. San Francisco"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Address / Office Details *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Downtown Tech Center / Remote"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+              </div>
+            </div>
+
+            {/* Compensation Structure */}
+            <div className="pt-2">
+              <label className="block font-semibold text-slate-700 mb-2">
+                Salary Structure *
+              </label>
+              <div className="flex gap-4 mb-3">
+                <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-700">
+                  <input
+                    type="radio"
+                    name="salaryType"
+                    checked={salaryType === "ranged"}
+                    onChange={() => setSalaryType("ranged")}
+                    className="text-blue-600"
+                  />
+                  <span>Salary Range (Min - Max)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-700">
+                  <input
+                    type="radio"
+                    name="salaryType"
+                    checked={salaryType === "fixed"}
+                    onChange={() => setSalaryType("fixed")}
+                    className="text-blue-600"
+                  />
+                  <span>Fixed Annual Salary</span>
+                </label>
+              </div>
+
+              {salaryType === "ranged" ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="number"
+                    required
+                    placeholder="Min Salary ($ USD/yr) e.g. 110000"
+                    value={salaryFrom}
+                    onChange={(e) => setSalaryFrom(e.target.value)}
+                    className="p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
+                  />
+                  <input
+                    type="number"
+                    required
+                    placeholder="Max Salary ($ USD/yr) e.g. 150000"
+                    value={salaryTo}
+                    onChange={(e) => setSalaryTo(e.target.value)}
+                    className="p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
+                  />
+                </div>
+              ) : (
+                <input
+                  type="number"
+                  required
+                  placeholder="Fixed Salary ($ USD/yr) e.g. 125000"
+                  value={fixedSalary}
+                  onChange={(e) => setFixedSalary(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
+                />
+              )}
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Application Deadline (Optional)
+              </label>
+              <input
+                type="date"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                className="w-full sm:w-1/2 p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
+              />
+            </div>
+          </div>
+
+          {/* Section 3: Detailed Job Content */}
+          <div className="p-5 bg-slate-50/70 rounded-2xl border border-slate-200/80 space-y-4">
+            <h3 className="font-bold text-slate-900 text-sm">
+              Position Details & Requirements
+            </h3>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Required Skills & Tech Stack (comma separated)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. React, TypeScript, Node.js, Docker, AWS"
+                value={skills}
+                onChange={(e) => setSkills(e.target.value)}
+                className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Overview & Description *
+              </label>
+              <textarea
+                rows={4}
+                required
+                placeholder="Describe your company culture, the core mission of this role, and the impact the candidate will have..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 leading-relaxed font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Key Responsibilities (bullet points)
+              </label>
+              <textarea
+                rows={3}
+                placeholder="• Architect and ship scalable frontend components&#10;• Collaborate with cross-functional product managers"
+                value={responsibilities}
+                onChange={(e) => setResponsibilities(e.target.value)}
+                className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 leading-relaxed font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Qualifications & Requirements (bullet points)
+              </label>
+              <textarea
+                rows={3}
+                placeholder="• 4+ years practical software development experience&#10;• Deep familiarity with modern React, TypeScript, and state management"
+                value={requirements}
+                onChange={(e) => setRequirements(e.target.value)}
+                className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 leading-relaxed font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Benefits & Perks (one per line)
+              </label>
+              <textarea
+                rows={3}
+                placeholder="Full health, dental & vision insurance&#10;401(k) matching up to 5%&#10;Flexible remote work stipend"
+                value={benefits}
+                onChange={(e) => setBenefits(e.target.value)}
+                className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 leading-relaxed font-medium"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-2">
+            <Link
+              to="/job/me"
+              className="px-4 py-2.5 text-slate-600 hover:text-slate-900 font-semibold"
+            >
+              Cancel
+            </Link>
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md shadow-blue-500/20 transition disabled:opacity-50"
+            >
+              <PlusCircle className="w-4 h-4" />
+              {loading ? "Publishing Opening..." : "Publish Job Opening"}
+            </button>
+          </div>
+        </form>
       </div>
-    </>
+    </div>
   );
 };
 
