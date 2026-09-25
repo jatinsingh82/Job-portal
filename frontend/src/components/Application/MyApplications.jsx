@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState, useMemo } from "react";
 import { Context } from "../../main";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -21,6 +21,10 @@ import {
   Briefcase,
   AlertCircle,
   X,
+  LayoutGrid,
+  List,
+  HeartPulse,
+  TrendingUp,
 } from "lucide-react";
 
 const MyApplications = () => {
@@ -29,6 +33,7 @@ const MyApplications = () => {
 
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState("list"); // 'list' | 'kanban'
 
   // Recruiter pipeline filter tab
   const [pipelineStage, setPipelineStage] = useState("All");
@@ -76,6 +81,31 @@ const MyApplications = () => {
     }
     fetchApplications();
   }, [isAuthorized, user?.role, navigate]);
+
+  // Factual Application Health Metrics for Candidates
+  const applicationHealth = useMemo(() => {
+    const total = applications.length;
+    if (total === 0) return null;
+
+    const underReview = applications.filter(
+      (a) => a.status === "Screening" || a.status === "Under Review"
+    ).length;
+    const shortlisted = applications.filter((a) => a.status === "Shortlisted").length;
+    const interviews = applications.filter((a) => a.status === "Interview").length;
+    const hired = applications.filter((a) => a.status === "Selected" || a.status === "Hired").length;
+    const rejected = applications.filter((a) => a.status === "Rejected").length;
+
+    const responded = shortlisted + interviews + hired + rejected;
+    const responseRate = Math.round((responded / total) * 100);
+
+    return {
+      total,
+      underReview,
+      interviews,
+      responseRate,
+      hired,
+    };
+  }, [applications]);
 
   // Candidate: withdraw application
   const handleWithdrawApplication = async (id) => {
@@ -151,9 +181,17 @@ const MyApplications = () => {
     }
   };
 
-  // Filter applications by pipeline stage for recruiters
   const stages = [
     "All",
+    "Applied",
+    "Screening",
+    "Shortlisted",
+    "Interview",
+    "Selected",
+    "Rejected",
+  ];
+
+  const kanbanColumns = [
     "Applied",
     "Screening",
     "Shortlisted",
@@ -206,10 +244,32 @@ const MyApplications = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700">
-            {applications.length}{" "}
-            {applications.length === 1 ? "Application" : "Applications"}
-          </span>
+          {/* View Mode Toggle */}
+          <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                viewMode === "list"
+                  ? "bg-white text-slate-900 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              List
+            </button>
+            <button
+              onClick={() => setViewMode("kanban")}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                viewMode === "kanban"
+                  ? "bg-white text-slate-900 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              Kanban
+            </button>
+          </div>
+
           {user?.role === "Employer" && (
             <Link
               to="/job/post"
@@ -221,8 +281,36 @@ const MyApplications = () => {
         </div>
       </div>
 
-      {/* Recruiter Pipeline Stage Tabs */}
-      {user?.role === "Employer" && (
+      {/* Application Health Card for Job Seekers */}
+      {user?.role === "Job Seeker" && applicationHealth && (
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-3">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-600">
+            <HeartPulse className="w-4 h-4" />
+            Application Health & Response Statistics
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+              <span className="text-[10px] uppercase font-bold text-slate-400">Total Submissions</span>
+              <p className="text-xl font-bold text-slate-900">{applicationHealth.total}</p>
+            </div>
+            <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100">
+              <span className="text-[10px] uppercase font-bold text-blue-600">Under Review</span>
+              <p className="text-xl font-bold text-blue-700">{applicationHealth.underReview}</p>
+            </div>
+            <div className="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100">
+              <span className="text-[10px] uppercase font-bold text-indigo-600">Interviews Received</span>
+              <p className="text-xl font-bold text-indigo-700">{applicationHealth.interviews}</p>
+            </div>
+            <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-100">
+              <span className="text-[10px] uppercase font-bold text-emerald-600">Recruiter Response Rate</span>
+              <p className="text-xl font-bold text-emerald-700">{applicationHealth.responseRate}%</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recruiter Pipeline Stage Tabs (in list mode) */}
+      {user?.role === "Employer" && viewMode === "list" && (
         <div className="flex flex-wrap gap-2 pb-2">
           {stages.map((stage) => {
             const count =
@@ -255,239 +343,336 @@ const MyApplications = () => {
         </div>
       )}
 
-      {/* Application List Container */}
-      {loading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((n) => (
-            <div
-              key={n}
-              className="h-32 bg-slate-100 rounded-2xl animate-pulse"
-            />
-          ))}
-        </div>
-      ) : filteredApps.length > 0 ? (
-        <div className="space-y-4">
-          {filteredApps.map((app) => (
-            <div
-              key={app._id}
-              className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl p-6 shadow-sm transition space-y-4"
-            >
-              {/* Header Row */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <span
-                      className={`px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider rounded-md border ${getStatusBadge(
-                        app.status
-                      )}`}
-                    >
-                      {app.status}
-                    </span>
-                    <span className="text-xs text-slate-400 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      Applied{" "}
-                      {new Date(
-                        app.appliedAt || app.createdAt || Date.now()
-                      ).toLocaleDateString()}
-                    </span>
-                  </div>
+      {/* VIEW 1: KANBAN BOARD */}
+      {viewMode === "kanban" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 overflow-x-auto pb-4">
+          {kanbanColumns.map((col) => {
+            const colApps = applications.filter((a) => {
+              if (col === "Screening") {
+                return a.status === "Screening" || a.status === "Under Review";
+              }
+              if (col === "Selected") {
+                return a.status === "Selected" || a.status === "Hired";
+              }
+              return a.status === col;
+            });
 
-                  <h3 className="text-lg font-bold text-slate-900">
-                    {user?.role === "Employer" ? (
-                      <span>{app.name}</span>
-                    ) : (
-                      <Link
-                        to={`/job/${app.jobId}`}
-                        className="hover:text-blue-600 transition"
-                      >
-                        {app.jobTitle || "Job Position"}
-                      </Link>
-                    )}
-                  </h3>
-
-                  <p className="text-xs font-medium text-slate-500 flex items-center gap-2">
-                    {user?.role === "Employer" ? (
-                      <span>
-                        Applicant for <strong>{app.jobTitle}</strong>
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1">
-                        <Building className="w-3.5 h-3.5 text-slate-400" />
-                        {app.company || "Hiring Employer"}
-                      </span>
-                    )}
-                  </p>
+            return (
+              <div
+                key={col}
+                className="bg-slate-100/70 border border-slate-200 rounded-2xl p-3 flex flex-col space-y-3 min-w-[210px]"
+              >
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                  <span className="font-bold text-xs uppercase tracking-wider text-slate-700">
+                    {col}
+                  </span>
+                  <span className="w-5 h-5 rounded-full bg-white text-slate-700 text-[11px] font-bold flex items-center justify-center border border-slate-200">
+                    {colApps.length}
+                  </span>
                 </div>
 
-                {/* Top Action Buttons */}
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* Candidate: Withdraw */}
-                  {user?.role === "Job Seeker" && (
-                    <button
-                      onClick={() => handleWithdrawApplication(app._id)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl transition"
+                <div className="space-y-2.5 flex-1">
+                  {colApps.map((app) => (
+                    <div
+                      key={app._id}
+                      className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-2 hover:border-blue-300 transition text-xs"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      Withdraw
-                    </button>
-                  )}
-
-                  {/* Employer: Status changer & Interview scheduler */}
-                  {user?.role === "Employer" && (
-                    <>
-                      <button
-                        onClick={() => setSelectedAppDetail(app)}
-                        className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
-                      >
-                        Candidate Profile
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setSelectedAppForInterview(app);
-                          setScheduleModalOpen(true);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition"
-                      >
-                        <Calendar className="w-3.5 h-3.5" />
-                        Schedule Interview
-                      </button>
-
-                      <div className="flex items-center gap-1.5 pl-2">
-                        <span className="text-[11px] font-medium text-slate-400">
-                          Stage:
-                        </span>
-                        <select
-                          value={app.status}
-                          onChange={(e) =>
-                            handleUpdateStatus(app._id, e.target.value)
-                          }
-                          className="text-xs font-bold py-1.5 px-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-600"
-                        >
-                          <option value="Applied">Applied</option>
-                          <option value="Screening">Screening</option>
-                          <option value="Shortlisted">Shortlisted</option>
-                          <option value="Interview">Interview</option>
-                          <option value="Selected">Selected</option>
-                          <option value="Rejected">Rejected</option>
-                        </select>
+                      <div className="space-y-0.5">
+                        <h4 className="font-bold text-slate-900 leading-tight">
+                          {user?.role === "Employer" ? app.name : app.jobTitle}
+                        </h4>
+                        <p className="text-[11px] text-slate-500">
+                          {user?.role === "Employer" ? app.jobTitle : app.company}
+                        </p>
                       </div>
-                    </>
+
+                      <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {new Date(app.appliedAt || Date.now()).toLocaleDateString()}
+                      </div>
+
+                      {user?.role === "Employer" ? (
+                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1">
+                          <button
+                            onClick={() => setSelectedAppDetail(app)}
+                            className="text-[11px] font-bold text-blue-600 hover:underline"
+                          >
+                            Profile
+                          </button>
+                          <select
+                            value={app.status}
+                            onChange={(e) => handleUpdateStatus(app._id, e.target.value)}
+                            className="text-[10px] font-bold p-1 bg-slate-50 border border-slate-200 rounded-lg"
+                          >
+                            <option value="Applied">Applied</option>
+                            <option value="Screening">Screening</option>
+                            <option value="Shortlisted">Shortlisted</option>
+                            <option value="Interview">Interview</option>
+                            <option value="Selected">Selected</option>
+                            <option value="Rejected">Rejected</option>
+                          </select>
+                        </div>
+                      ) : (
+                        <div className="pt-1.5 border-t border-slate-100">
+                          <Link
+                            to={`/job/${app.jobId}`}
+                            className="text-[11px] font-bold text-blue-600 hover:underline"
+                          >
+                            View Job Opening →
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {colApps.length === 0 && (
+                    <div className="text-center py-6 text-[11px] text-slate-400">
+                      No candidates in {col}
+                    </div>
                   )}
                 </div>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              {/* Scheduled Interview Banner (if present) */}
-              {app.interview && app.interview.scheduled && (
-                <div className="p-4 rounded-xl bg-indigo-50/70 border border-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1.5 text-indigo-900 font-bold">
-                      <Video className="w-4 h-4 text-indigo-600" />
-                      Interview Scheduled
-                    </div>
-                    <p className="text-slate-600">
-                      <strong>Date & Time:</strong> {app.interview.date} at{" "}
-                      {app.interview.time} ({app.interview.type})
-                    </p>
-                    {app.interview.notes && (
-                      <p className="text-slate-500 italic">
-                        "{app.interview.notes}"
+      {/* VIEW 2: LIST TIMELINE (Standard view) */}
+      {viewMode === "list" && (
+        <>
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((n) => (
+                <div
+                  key={n}
+                  className="h-32 bg-slate-100 rounded-2xl animate-pulse"
+                />
+              ))}
+            </div>
+          ) : filteredApps.length > 0 ? (
+            <div className="space-y-4">
+              {filteredApps.map((app) => (
+                <div
+                  key={app._id}
+                  className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl p-6 shadow-sm transition space-y-4"
+                >
+                  {/* Header Row */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <span
+                          className={`px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider rounded-md border ${getStatusBadge(
+                            app.status
+                          )}`}
+                        >
+                          {app.status}
+                        </span>
+                        <span className="text-xs text-slate-400 flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          Applied{" "}
+                          {new Date(
+                            app.appliedAt || app.createdAt || Date.now()
+                          ).toLocaleDateString()}
+                        </span>
+                      </div>
+
+                      <h3 className="text-lg font-bold text-slate-900">
+                        {user?.role === "Employer" ? (
+                          <span>{app.name}</span>
+                        ) : (
+                          <Link
+                            to={`/job/${app.jobId}`}
+                            className="hover:text-blue-600 transition"
+                          >
+                            {app.jobTitle || "Job Position"}
+                          </Link>
+                        )}
+                      </h3>
+
+                      <p className="text-xs font-medium text-slate-500 flex items-center gap-2">
+                        {user?.role === "Employer" ? (
+                          <span>
+                            Applicant for <strong>{app.jobTitle}</strong>
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            <Building className="w-3.5 h-3.5 text-slate-400" />
+                            {app.company || "Hiring Employer"}
+                          </span>
+                        )}
                       </p>
+                    </div>
+
+                    {/* Top Action Buttons */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Candidate: Withdraw */}
+                      {user?.role === "Job Seeker" && (
+                        <button
+                          onClick={() => handleWithdrawApplication(app._id)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Withdraw
+                        </button>
+                      )}
+
+                      {/* Employer: Status changer & Interview scheduler */}
+                      {user?.role === "Employer" && (
+                        <>
+                          <button
+                            onClick={() => setSelectedAppDetail(app)}
+                            className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+                          >
+                            Candidate Profile
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setSelectedAppForInterview(app);
+                              setScheduleModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition"
+                          >
+                            <Calendar className="w-3.5 h-3.5" />
+                            Schedule Interview
+                          </button>
+
+                          <div className="flex items-center gap-1.5 pl-2">
+                            <span className="text-[11px] font-medium text-slate-400">
+                              Stage:
+                            </span>
+                            <select
+                              value={app.status}
+                              onChange={(e) =>
+                                handleUpdateStatus(app._id, e.target.value)
+                              }
+                              className="text-xs font-bold py-1.5 px-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-600"
+                            >
+                              <option value="Applied">Applied</option>
+                              <option value="Screening">Screening</option>
+                              <option value="Shortlisted">Shortlisted</option>
+                              <option value="Interview">Interview</option>
+                              <option value="Selected">Selected</option>
+                              <option value="Rejected">Rejected</option>
+                            </select>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Scheduled Interview Banner (if present) */}
+                  {app.interview && app.interview.scheduled && (
+                    <div className="p-4 rounded-xl bg-indigo-50/70 border border-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 text-indigo-900 font-bold">
+                          <Video className="w-4 h-4 text-indigo-600" />
+                          Interview Scheduled
+                        </div>
+                        <p className="text-slate-600">
+                          <strong>Date & Time:</strong> {app.interview.date} at{" "}
+                          {app.interview.time} ({app.interview.type})
+                        </p>
+                        {app.interview.notes && (
+                          <p className="text-slate-500 italic">
+                            "{app.interview.notes}"
+                          </p>
+                        )}
+                      </div>
+
+                      {app.interview.link && (
+                        <a
+                          href={app.interview.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition shrink-0"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          Join Meeting Link
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Candidate Info / Resume Section */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-600">
+                    <div className="flex flex-wrap items-center gap-4">
+                      <span className="flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-slate-400" />
+                        {app.name} ({app.email})
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                        {app.address}
+                      </span>
+                    </div>
+
+                    {app.resume?.url && (
+                      <a
+                        href={app.resume.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 font-semibold text-blue-600 hover:underline"
+                      >
+                        <FileText className="w-4 h-4" />
+                        View Attached Resume ({app.resume.name || "Resume"})
+                      </a>
                     )}
                   </div>
 
-                  {app.interview.link && (
-                    <a
-                      href={app.interview.link}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition shrink-0"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      Join Meeting Link
-                    </a>
+                  {/* Cover Letter excerpt */}
+                  {app.coverLetter && (
+                    <div className="pt-2 text-xs text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <strong className="text-slate-700">Cover Letter:</strong>{" "}
+                      {app.coverLetter}
+                    </div>
+                  )}
+
+                  {/* Timeline Steps */}
+                  {app.timeline && app.timeline.length > 0 && (
+                    <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                      <span className="font-semibold text-slate-400 uppercase tracking-wider">
+                        Activity History:
+                      </span>
+                      {app.timeline.map((step, sIdx) => (
+                        <span
+                          key={sIdx}
+                          className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium"
+                        >
+                          {step.status} (
+                          {new Date(step.date).toLocaleDateString()})
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
-              )}
-
-              {/* Candidate Info / Resume Section */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-600">
-                <div className="flex flex-wrap items-center gap-4">
-                  <span className="flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-slate-400" />
-                    {app.name} ({app.email})
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                    {app.address}
-                  </span>
-                </div>
-
-                {app.resume?.url && (
-                  <a
-                    href={app.resume.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 font-semibold text-blue-600 hover:underline"
-                  >
-                    <FileText className="w-4 h-4" />
-                    View Attached Resume ({app.resume.name || "Resume"})
-                  </a>
-                )}
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16 bg-white border border-slate-200 rounded-3xl p-8 space-y-4">
+              <FileText className="w-12 h-12 text-slate-300 mx-auto" />
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">
+                  {user?.role === "Employer"
+                    ? "No applications in this stage"
+                    : "No applications submitted yet"}
+                </h3>
+                <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
+                  {user?.role === "Employer"
+                    ? "Switch pipeline stages or wait for incoming submissions."
+                    : "Browse open jobs to apply directly to verified employers."}
+                </p>
               </div>
-
-              {/* Cover Letter excerpt */}
-              {app.coverLetter && (
-                <div className="pt-2 text-xs text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <strong className="text-slate-700">Cover Letter:</strong>{" "}
-                  {app.coverLetter}
-                </div>
-              )}
-
-              {/* Timeline Steps */}
-              {app.timeline && app.timeline.length > 0 && (
-                <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                  <span className="font-semibold text-slate-400 uppercase tracking-wider">
-                    Activity History:
-                  </span>
-                  {app.timeline.map((step, sIdx) => (
-                    <span
-                      key={sIdx}
-                      className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium"
-                    >
-                      {step.status} (
-                      {new Date(step.date).toLocaleDateString()})
-                    </span>
-                  ))}
-                </div>
+              {user?.role !== "Employer" && (
+                <Link
+                  to="/job/getall"
+                  className="inline-flex items-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition"
+                >
+                  Browse Open Roles
+                </Link>
               )}
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-16 bg-white border border-slate-200 rounded-3xl p-8 space-y-4">
-          <FileText className="w-12 h-12 text-slate-300 mx-auto" />
-          <div>
-            <h3 className="text-lg font-bold text-slate-900">
-              {user?.role === "Employer"
-                ? "No applications in this stage"
-                : "No applications submitted yet"}
-            </h3>
-            <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
-              {user?.role === "Employer"
-                ? "Switch pipeline stages or wait for incoming submissions."
-                : "Browse open jobs to apply directly to verified employers."}
-            </p>
-          </div>
-          {user?.role !== "Employer" && (
-            <Link
-              to="/job/getall"
-              className="inline-flex items-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition"
-            >
-              Browse Open Roles
-            </Link>
           )}
-        </div>
+        </>
       )}
 
       {/* Recruiter: Schedule Interview Modal */}

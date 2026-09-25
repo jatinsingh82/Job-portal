@@ -87,6 +87,25 @@ const jobSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  verifiedEmployer: {
+    type: Boolean,
+    default: true,
+  },
+  views: {
+    type: Number,
+    default: 0,
+  },
+  reports: [
+    {
+      user: { type: mongoose.Schema.ObjectId, ref: "User" },
+      userName: String,
+      userEmail: String,
+      reason: String,
+      details: String,
+      reportedAt: { type: Date, default: Date.now },
+      status: { type: String, default: "pending" },
+    },
+  ],
   jobPostedOn: {
     type: Date,
     default: Date.now,

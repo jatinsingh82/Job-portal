@@ -17,6 +17,12 @@ import PostJob from "./components/Job/PostJob";
 import MyJobs from "./components/Job/MyJobs";
 import SavedJobs from "./components/Job/SavedJobs";
 import Profile from "./components/Candidate/Profile";
+import CareerHub from "./components/Candidate/CareerHub";
+import SalaryInsights from "./components/Job/SalaryInsights";
+import Companies from "./components/Job/Companies";
+import CompareJobs from "./components/Job/CompareJobs";
+import JobAlerts from "./components/Job/JobAlerts";
+import AdminDashboard from "./components/Admin/AdminDashboard";
 import NotFound from "./components/NotFound/NotFound";
 
 const App = () => {
@@ -53,7 +59,13 @@ const App = () => {
             <Route path="/application/:id" element={<Application />} />
             <Route path="/applications/me" element={<MyApplications />} />
             <Route path="/saved-jobs" element={<SavedJobs />} />
+            <Route path="/job-alerts" element={<JobAlerts />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/career-hub" element={<CareerHub />} />
+            <Route path="/salary-insights" element={<SalaryInsights />} />
+            <Route path="/companies" element={<Companies />} />
+            <Route path="/compare" element={<CompareJobs />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/job/post" element={<PostJob />} />
             <Route path="/job/me" element={<MyJobs />} />
             <Route path="*" element={<NotFound />} />

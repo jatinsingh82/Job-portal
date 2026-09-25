@@ -90,13 +90,18 @@ export const updateProfile = catchAsyncErrors(async (req, res, next) => {
   if (title !== undefined) updateFields.title = title;
   if (company !== undefined) updateFields.company = company;
   if (bio !== undefined) updateFields.bio = bio;
-  if (skills !== undefined) updateFields.skills = Array.isArray(skills) ? skills : skills.split(",").map(s => s.trim()).filter(Boolean);
+  if (skills !== undefined)
+    updateFields.skills = Array.isArray(skills)
+      ? skills
+      : skills.split(",").map((s) => s.trim()).filter(Boolean);
   if (education !== undefined) updateFields.education = education;
   if (experience !== undefined) updateFields.experience = experience;
   if (projects !== undefined) updateFields.projects = projects;
   if (certifications !== undefined) updateFields.certifications = certifications;
-  if (preferredLocation !== undefined) updateFields.preferredLocation = preferredLocation;
-  if (preferredJobType !== undefined) updateFields.preferredJobType = preferredJobType;
+  if (preferredLocation !== undefined)
+    updateFields.preferredLocation = preferredLocation;
+  if (preferredJobType !== undefined)
+    updateFields.preferredJobType = preferredJobType;
   if (avatar !== undefined) updateFields.avatar = avatar;
 
   const updatedUser = await User.findByIdAndUpdate(userId, updateFields, {
@@ -242,3 +247,110 @@ export const getSavedJobs = catchAsyncErrors(async (req, res, next) => {
     savedJobs,
   });
 });
+
+// Job Alerts
+export const saveJobAlert = catchAsyncErrors(async (req, res, next) => {
+  const { keywords, location, category, workMode } = req.body;
+  const user = await User.findById(req.user._id);
+  const alerts = user.jobAlerts || [];
+  alerts.push({
+    keywords: keywords || "",
+    location: location || "",
+    category: category || "",
+    workMode: workMode || "",
+    createdAt: new Date(),
+  });
+
+  const updated = await User.findByIdAndUpdate(
+    req.user._id,
+    { jobAlerts: alerts },
+    { new: true }
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Job alert preferences created!",
+    jobAlerts: updated.jobAlerts,
+  });
+});
+
+export const getJobAlerts = catchAsyncErrors(async (req, res, next) => {
+  const user = await User.findById(req.user._id);
+  res.status(200).json({
+    success: true,
+    jobAlerts: user?.jobAlerts || [],
+  });
+});
+
+export const deleteJobAlert = catchAsyncErrors(async (req, res, next) => {
+  const { id } = req.params;
+  const user = await User.findById(req.user._id);
+  const alerts = (user.jobAlerts || []).filter((a) => String(a._id) !== id);
+  const updated = await User.findByIdAndUpdate(
+    req.user._id,
+    { jobAlerts: alerts },
+    { new: true }
+  );
+  res.status(200).json({
+    success: true,
+    message: "Job alert deleted.",
+    jobAlerts: updated.jobAlerts,
+  });
+});
+
+// Bookmark Private Notes
+export const saveBookmarkNote = catchAsyncErrors(async (req, res, next) => {
+  const { jobId } = req.params;
+  const { note } = req.body;
+  const user = await User.findById(req.user._id);
+  let notes = user.bookmarkNotes || [];
+  const existingIdx = notes.findIndex((n) => n.jobId === jobId);
+  if (existingIdx >= 0) {
+    notes[existingIdx].note = note;
+    notes[existingIdx].updatedAt = new Date();
+  } else {
+    notes.push({ jobId, note, updatedAt: new Date() });
+  }
+
+  const updated = await User.findByIdAndUpdate(
+    req.user._id,
+    { bookmarkNotes: notes },
+    { new: true }
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Private note saved!",
+    bookmarkNotes: updated.bookmarkNotes,
+  });
+});
+
+export const getBookmarkNotes = catchAsyncErrors(async (req, res, next) => {
+  const user = await User.findById(req.user._id);
+  res.status(200).json({
+    success: true,
+    bookmarkNotes: user?.bookmarkNotes || [],
+  });
+});
+
+// Notification Settings
+export const updateNotificationSettings = catchAsyncErrors(
+  async (req, res, next) => {
+    const { emailAlerts, applicationUpdates, interviewReminders } = req.body;
+    const settings = {
+      emailAlerts: Boolean(emailAlerts),
+      applicationUpdates: Boolean(applicationUpdates),
+      interviewReminders: Boolean(interviewReminders),
+    };
+    const updated = await User.findByIdAndUpdate(
+      req.user._id,
+      { notificationSettings: settings },
+      { new: true }
+    );
+    res.status(200).json({
+      success: true,
+      message: "Notification preferences updated!",
+      notificationSettings: updated.notificationSettings,
+    });
+  }
+);

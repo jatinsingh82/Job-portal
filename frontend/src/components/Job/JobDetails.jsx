@@ -4,6 +4,8 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { Context } from "../../main";
 import JobCard from "./JobCard";
+import JobShareModal from "./JobShareModal";
+import ReportJobModal from "./ReportJobModal";
 import {
   MapPin,
   Building,
@@ -19,6 +21,8 @@ import {
   Send,
   Award,
   Sparkles,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 
 const JobDetails = () => {
@@ -31,6 +35,10 @@ const JobDetails = () => {
   const [loading, setLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Modals
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchJob = async () => {
@@ -87,16 +95,6 @@ const JobDetails = () => {
     }
   };
 
-  const handleShare = () => {
-    const url = window.location.href;
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(url);
-      toast.success("Job link copied to clipboard!");
-    } else {
-      toast.success(url);
-    }
-  };
-
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto px-4 py-16 text-center">
@@ -125,14 +123,26 @@ const JobDetails = () => {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Back button */}
-      <Link
-        to="/job/getall"
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to all jobs
-      </Link>
+      {/* Top Navigation */}
+      <div className="flex items-center justify-between">
+        <Link
+          to="/job/getall"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to all jobs
+        </Link>
+
+        {isAuthorized && (
+          <button
+            onClick={() => setReportModalOpen(true)}
+            className="text-xs text-slate-400 hover:text-rose-600 flex items-center gap-1 font-medium transition"
+          >
+            <AlertTriangle className="w-3.5 h-3.5" />
+            Report Posting
+          </button>
+        )}
+      </div>
 
       {/* Main Header Card */}
       <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm">
@@ -175,7 +185,7 @@ const JobDetails = () => {
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <button
-              onClick={handleShare}
+              onClick={() => setShareModalOpen(true)}
               title="Share job"
               className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition flex items-center gap-2 text-xs font-semibold"
             >
@@ -382,6 +392,16 @@ const JobDetails = () => {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Share Modal */}
+      {shareModalOpen && (
+        <JobShareModal job={job} onClose={() => setShareModalOpen(false)} />
+      )}
+
+      {/* Report Modal */}
+      {reportModalOpen && (
+        <ReportJobModal job={job} onClose={() => setReportModalOpen(false)} />
       )}
     </div>
   );

@@ -9,6 +9,12 @@ import {
   deleteResume,
   toggleSaveJob,
   getSavedJobs,
+  saveJobAlert,
+  getJobAlerts,
+  deleteJobAlert,
+  saveBookmarkNote,
+  getBookmarkNotes,
+  updateNotificationSettings,
 } from "../controllers/userController.js";
 import { isAuthenticated } from "../middlewares/auth.js";
 
@@ -24,5 +30,14 @@ router.post("/resume", isAuthenticated, uploadResume);
 router.delete("/resume", isAuthenticated, deleteResume);
 router.post("/save-job/:id", isAuthenticated, toggleSaveJob);
 router.get("/saved-jobs", isAuthenticated, getSavedJobs);
+
+router.post("/job-alerts", isAuthenticated, saveJobAlert);
+router.get("/job-alerts", isAuthenticated, getJobAlerts);
+router.delete("/job-alerts/:id", isAuthenticated, deleteJobAlert);
+
+router.post("/bookmark-note/:jobId", isAuthenticated, saveBookmarkNote);
+router.get("/bookmark-notes", isAuthenticated, getBookmarkNotes);
+
+router.put("/notifications", isAuthenticated, updateNotificationSettings);
 
 export default router;

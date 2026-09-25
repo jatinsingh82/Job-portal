@@ -106,6 +106,27 @@ const userSchema = new mongoose.Schema({
       type: String,
     },
   ],
+  bookmarkNotes: [
+    {
+      jobId: String,
+      note: String,
+      updatedAt: { type: Date, default: Date.now },
+    },
+  ],
+  jobAlerts: [
+    {
+      keywords: String,
+      location: String,
+      category: String,
+      workMode: String,
+      createdAt: { type: Date, default: Date.now },
+    },
+  ],
+  notificationSettings: {
+    emailAlerts: { type: Boolean, default: true },
+    applicationUpdates: { type: Boolean, default: true },
+    interviewReminders: { type: Boolean, default: true },
+  },
   createdAt: {
     type: Date,
     default: Date.now,
